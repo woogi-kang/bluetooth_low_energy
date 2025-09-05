@@ -1,19 +1,13 @@
 import 'package:bluetooth_low_energy_example/view_models.dart';
 import 'package:clover/clover.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_simple_treeview/flutter_simple_treeview.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
-import 'characteristic_view.dart';
 import 'compact_characteristic_view.dart';
-import 'compact_descriptor_view.dart';
 import 'compact_service_view.dart';
 
 class PeripheralView extends StatefulWidget {
-  final TreeController _treeController;
-
-  PeripheralView({super.key})
-    : _treeController = TreeController(allNodesExpanded: false);
+  const PeripheralView({super.key});
 
   @override
   State<PeripheralView> createState() => _PeripheralViewState();
@@ -262,108 +256,53 @@ class _PeripheralViewState extends State<PeripheralView> with SingleTickerProvid
   }
 
   Widget _buildCompactServicesView(List<ServiceViewModel> serviceViewModels) {
-    return Column(
-      children: [
-        // 작은 헤더
-        Container(
-          padding: const EdgeInsets.all(8),
-          child: Row(
-            children: [
-              Icon(
-                Symbols.list_alt,
-                color: Theme.of(context).colorScheme.primary,
-                size: 16,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                'GATT 서비스 (${serviceViewModels.length}개)',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
+    return SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // 작은 헤더
+          Container(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: [
+                Icon(
+                  Symbols.list_alt,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: 16,
                 ),
-              ),
-              const Spacer(),
-              IconButton(
-                onPressed: () => widget._treeController.expandAll(),
-                icon: Icon(Symbols.unfold_more, size: 16),
-                iconSize: 16,
-                visualDensity: VisualDensity.compact,
-              ),
-            ],
-          ),
-        ),
-        // 서비스 목록
-        Expanded(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: TreeView(
-              treeController: widget._treeController,
-              indent: 12.0,
-              nodes: _buildCompactServiceTreeNodes(serviceViewModels),
+                const SizedBox(width: 8),
+                Text(
+                  'GATT 서비스 (${serviceViewModels.length}개)',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ],
+          // 서비스 목록을 단순한 리스트로 표시
+          ...serviceViewModels.map((serviceViewModel) => Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              InheritedViewModel(
+                viewModel: serviceViewModel,
+                view: const CompactServiceView(),
+              ),
+              // 해당 서비스의 특성들 표시
+              ...serviceViewModel.characteristicViewModels.map((charViewModel) => 
+                InheritedViewModel(
+                  viewModel: charViewModel,
+                  view: const CompactCharacteristicView(),
+                )
+              ),
+            ],
+          )),
+          const SizedBox(height: 16), // 하단 여백
+        ],
+      ),
     );
   }
 
-  List<TreeNode> _buildCompactServiceTreeNodes(List<ServiceViewModel> viewModels) {
-    return viewModels.map((viewModel) {
-      final includedServiceViewModels = viewModel.includedServiceViewModels;
-      final characteristicViewModels = viewModel.characteristicViewModels;
-      return TreeNode(
-        children: [
-          ..._buildCompactServiceTreeNodes(includedServiceViewModels),
-          ..._buildCompactCharacteristicTreeNodes(characteristicViewModels),
-        ],
-        content: InheritedViewModel(
-          view: const CompactServiceView(),
-          viewModel: viewModel,
-        ),
-      );
-    }).toList();
-  }
-
-  List<TreeNode> _buildCompactCharacteristicTreeNodes(
-    List<CharacteristicViewModel> viewModels,
-  ) {
-    return viewModels.map((viewModel) {
-      final descriptorViewModels = viewModel.descriptorViewModels;
-      return TreeNode(
-        children: [
-          TreeNode(
-            content: Expanded(
-              child: Container(
-                margin: const EdgeInsets.only(right: 20.0),
-                height: 200.0, // 작은 화면에 맞게 높이 줄임
-                child: InheritedViewModel(
-                  view: const CharacteristicView(),
-                  viewModel: viewModel,
-                ),
-              ),
-            ),
-          ),
-          ..._buildCompactDescriptorTreeNodes(descriptorViewModels),
-        ],
-        content: InheritedViewModel(
-          view: const CompactCharacteristicView(),
-          viewModel: viewModel,
-        ),
-      );
-    }).toList();
-  }
-
-  List<TreeNode> _buildCompactDescriptorTreeNodes(
-    List<DescriptorViewModel> viewModels,
-  ) {
-    return viewModels.map((viewModel) {
-      return TreeNode(
-        content: InheritedViewModel(
-          view: const CompactDescriptorView(),
-          viewModel: viewModel,
-        ),
-      );
-    }).toList();
-  }
 
   Widget _buildConnectionButton(PeripheralViewModel viewModel, bool connected) {
     return Container(
