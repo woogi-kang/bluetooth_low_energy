@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -38,6 +39,9 @@ class PeripheralManagerViewModel extends ViewModel {
   int _dataPacketsSent;
   int _dataPacketsReceived;
   DateTime _lastActivity;
+  
+  // 텍스트 메시지 관련
+  final List<String> _receivedMessages;
 
   late final StreamSubscription _stateChangedSubscription;
   late final StreamSubscription _characteristicReadRequestedSubscription;
@@ -64,7 +68,8 @@ class PeripheralManagerViewModel extends ViewModel {
       _totalConnections = 0,
       _dataPacketsSent = 0,
       _dataPacketsReceived = 0,
-      _lastActivity = DateTime.now() {
+      _lastActivity = DateTime.now(),
+      _receivedMessages = [] {
     _setupSubscriptions();
     _initializeDevice();
   }
@@ -93,6 +98,9 @@ class PeripheralManagerViewModel extends ViewModel {
   int get dataPacketsSent => _dataPacketsSent;
   int get dataPacketsReceived => _dataPacketsReceived;
   DateTime get lastActivity => _lastActivity;
+  
+  // 텍스트 메시지 관련
+  List<String> get receivedMessages => List.unmodifiable(_receivedMessages);
 
   // 연결 품질 계산
   String get connectionQuality {
@@ -335,7 +343,15 @@ class PeripheralManagerViewModel extends ViewModel {
     _dataPacketsReceived++;
 
     try {
-      final message = String.fromCharCodes(value);
+      // UTF-8 디코딩으로 다국어 지원
+      String message;
+      try {
+        message = utf8.decode(value);
+      } catch (e) {
+        // UTF-8 디코딩 실패시 fallback
+        message = String.fromCharCodes(value);
+      }
+      
       _addLog(
         LogEntry(
           level: LogLevel.info,
@@ -379,11 +395,33 @@ class PeripheralManagerViewModel extends ViewModel {
           );
         }
       } else {
-        // 일반 메시지 처리 (인증되지 않은 요청)
-        await _manager.respondWriteRequestWithError(
-          request,
-          error: GATTError.insufficientAuthentication,
-        );
+        // 인증된 사용자의 일반 텍스트 메시지인지 확인
+        if (_authenticatedCentrals.containsKey(central) && _authenticatedCentrals[central]!) {
+          // 인증된 사용자의 텍스트 메시지
+          _receivedMessages.insert(0, message); // 최신 메시지가 위에 오도록
+          
+          // 메시지 저장 수 제한 (최대 50개)
+          if (_receivedMessages.length > 50) {
+            _receivedMessages.removeRange(50, _receivedMessages.length);
+          }
+          
+          _addLog(
+            LogEntry(
+              level: LogLevel.success,
+              message: '텍스트 메시지 수신: $message',
+              timestamp: DateTime.now(),
+            ),
+          );
+          
+          // 성공적으로 받았다고 응답
+          await _manager.respondWriteRequest(request);
+        } else {
+          // 인증되지 않은 사용자
+          await _manager.respondWriteRequestWithError(
+            request,
+            error: GATTError.insufficientAuthentication,
+          );
+        }
       }
     } catch (e) {
       _addLog(

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
@@ -16,6 +17,10 @@ class CentralScannerViewModel extends ViewModel {
   String _searchQuery;
   List<UUID>? _serviceFilter;
   bool _hideUnnamedDevices;
+  
+  // 연결 상태 관리
+  final Map<Peripheral, bool> _connectedDevices = {};
+  final Map<Peripheral, List<GATTService>> _deviceServices = {};
 
   late final StreamSubscription _stateChangedSubscription;
   late final StreamSubscription _discoveredSubscription;
@@ -51,6 +56,11 @@ class CentralScannerViewModel extends ViewModel {
   List<UUID>? get serviceFilter => _serviceFilter;
   Set<String> get favoriteDevices => _favoriteDevices;
   bool get hideUnnamedDevices => _hideUnnamedDevices;
+  
+  // 연결 상태 관련 getters
+  Map<Peripheral, bool> get connectedDevices => Map.unmodifiable(_connectedDevices);
+  bool isConnected(Peripheral peripheral) => _connectedDevices[peripheral] == true;
+  List<GATTService>? getServices(Peripheral peripheral) => _deviceServices[peripheral];
 
   List<DiscoveredEventArgs> get discoveries {
     var filtered = _discoveries.where((discovery) {
@@ -154,9 +164,11 @@ class CentralScannerViewModel extends ViewModel {
   Future<void> connectToDevice(DiscoveredEventArgs discovery) async {
     try {
       await _manager.connect(discovery.peripheral);
-      // Connection successful - will be handled by connection state listener
+      _connectedDevices[discovery.peripheral] = true;
+      notifyListeners();
     } catch (e) {
-      // Handle connection error
+      _connectedDevices[discovery.peripheral] = false;
+      notifyListeners();
       rethrow;
     }
   }
@@ -164,6 +176,9 @@ class CentralScannerViewModel extends ViewModel {
   Future<void> disconnectFromDevice(Peripheral peripheral) async {
     try {
       await _manager.disconnect(peripheral);
+      _connectedDevices.remove(peripheral);
+      _deviceServices.remove(peripheral);
+      notifyListeners();
     } catch (e) {
       // Handle disconnection error
       rethrow;
@@ -172,7 +187,10 @@ class CentralScannerViewModel extends ViewModel {
   
   Future<List<GATTService>> discoverServices(Peripheral peripheral) async {
     try {
-      return await _manager.discoverGATT(peripheral);
+      final services = await _manager.discoverGATT(peripheral);
+      _deviceServices[peripheral] = services;
+      notifyListeners();
+      return services;
     } catch (e) {
       rethrow;
     }
@@ -211,6 +229,23 @@ class CentralScannerViewModel extends ViewModel {
       rethrow;
     }
   }
+  
+  // UTF-8 텍스트 전송 메서드
+  Future<void> sendTextToDevice(
+    Peripheral peripheral,
+    GATTCharacteristic characteristic,
+    String text,
+  ) async {
+    try {
+      // UTF-8로 인코딩
+      final utf8Bytes = utf8.encode(text);
+      final value = Uint8List.fromList(utf8Bytes);
+      
+      await writeCharacteristic(peripheral, characteristic, value);
+    } catch (e) {
+      rethrow;
+    }
+  }
 
   bool isFavorite(String deviceUuid) {
     return _favoriteDevices.contains(deviceUuid);
@@ -238,6 +273,7 @@ class CentralScannerViewModel extends ViewModel {
     }
     notifyListeners();
   }
+  
 
   @override
   void dispose() {

@@ -17,6 +17,7 @@ class StatusDashboard extends StatelessWidget {
     final connectedCount = viewModel.connectedCentralsCount;
     final waitingForAuth = viewModel.waitingForAuth;
     final currentAuthCode = viewModel.currentAuthCode;
+    final receivedMessages = viewModel.receivedMessages;
 
     return Column(
       children: [
@@ -47,6 +48,11 @@ class StatusDashboard extends StatelessWidget {
             ),
           ],
         ),
+        // 수신된 메시지 표시
+        if (receivedMessages.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildReceivedMessagesCard(context, receivedMessages),
+        ],
       ],
     );
   }
@@ -228,6 +234,102 @@ class StatusDashboard extends StatelessWidget {
             ),
             textAlign: TextAlign.center,
           ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildReceivedMessagesCard(BuildContext context, List<String> messages) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.blue.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.blue.shade300,
+          width: 2,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Symbols.message,
+                color: Colors.blue.shade700,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                '수신된 메시지',
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.blue.shade800,
+                ),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.blue.shade700,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '${messages.length}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 120),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: messages.length > 5 ? 5 : messages.length, // 최대 5개만 표시
+              separatorBuilder: (context, index) => const SizedBox(height: 4),
+              itemBuilder: (context, index) {
+                final message = messages[index];
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: Colors.blue.shade200,
+                      width: 1,
+                    ),
+                  ),
+                  child: Text(
+                    message,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.blue.shade900,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              },
+            ),
+          ),
+          if (messages.length > 5) 
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                '... 외 ${messages.length - 5}개 메시지',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.blue.shade600,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
         ],
       ),
     );

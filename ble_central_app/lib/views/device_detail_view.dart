@@ -22,6 +22,8 @@ class _DeviceDetailViewState extends State<DeviceDetailView> {
   List<GATTService>? _services;
   bool _isLoading = true;
   String? _error;
+  final TextEditingController _textController = TextEditingController();
+  bool _isSending = false;
 
   @override
   void initState() {
@@ -48,6 +50,72 @@ class _DeviceDetailViewState extends State<DeviceDetailView> {
         _isLoading = false;
       });
     }
+  }
+  
+  Future<void> _sendText() async {
+    final text = _textController.text.trim();
+    if (text.isEmpty || _isSending) return;
+    
+    setState(() {
+      _isSending = true;
+    });
+    
+    try {
+      // 쓰기 가능한 특성 찾기
+      GATTCharacteristic? writeCharacteristic;
+      if (_services != null) {
+        for (final service in _services!) {
+          for (final characteristic in service.characteristics) {
+            if (characteristic.properties.contains(GATTCharacteristicProperty.write) ||
+                characteristic.properties.contains(GATTCharacteristicProperty.writeWithoutResponse)) {
+              writeCharacteristic = characteristic;
+              break;
+            }
+          }
+          if (writeCharacteristic != null) break;
+        }
+      }
+      
+      if (writeCharacteristic != null) {
+        await widget.viewModel.sendTextToDevice(
+          widget.discovery.peripheral,
+          writeCharacteristic,
+          text,
+        );
+        
+        _textController.clear();
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('메시지 전송: $text'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception('쓰기 가능한 특성을 찾을 수 없습니다');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('전송 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      setState(() {
+        _isSending = false;
+      });
+    }
+  }
+  
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
   }
 
   @override
@@ -111,13 +179,90 @@ class _DeviceDetailViewState extends State<DeviceDetailView> {
       );
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _services!.length,
-      itemBuilder: (context, index) {
-        final service = _services![index];
-        return _buildServiceCard(service);
-      },
+    final isConnected = widget.viewModel.isConnected(widget.discovery.peripheral);
+    
+    return Column(
+      children: [
+        // 연결 상태 및 텍스트 전송 UI
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: isConnected ? Colors.green.shade50 : Colors.red.shade50,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isConnected ? Colors.green.shade300 : Colors.red.shade300,
+              width: 2,
+            ),
+          ),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isConnected ? Symbols.bluetooth_connected : Symbols.bluetooth_disabled,
+                    color: isConnected ? Colors.green.shade700 : Colors.red.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      isConnected ? '연결됨 - 텍스트 전송 가능' : '연결 끊김',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: isConnected ? Colors.green.shade700 : Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (isConnected) ...[
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        decoration: const InputDecoration(
+                          hintText: '메시지를 입력하세요 (한글, 영어, 일본어, 중국어 지원)',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                        maxLines: 1,
+                        enabled: !_isSending,
+                        onSubmitted: (_) => _sendText(),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _isSending ? null : _sendText,
+                      child: _isSending 
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Symbols.send, size: 18),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
+        ),
+        // GATT 서비스 목록
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: _services!.length,
+            itemBuilder: (context, index) {
+              final service = _services![index];
+              return _buildServiceCard(service);
+            },
+          ),
+        ),
+      ],
     );
   }
 
