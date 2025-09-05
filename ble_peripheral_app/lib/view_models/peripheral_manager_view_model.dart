@@ -532,6 +532,23 @@ class PeripheralManagerViewModel extends ViewModel {
     notifyListeners();
   }
 
+  void sendDataMessage(String message) {
+    sendDataToCentrals(message);
+  }
+
+  void disconnectAll() {
+    _connectedCentrals.clear();
+    _authenticatedCentrals.clear();
+    _waitingForAuth = false;
+    _currentAuthCode = null;
+    _addLog(LogEntry(
+      level: LogLevel.info,
+      message: '모든 연결 해제',
+      timestamp: DateTime.now(),
+    ));
+    notifyListeners();
+  }
+
   void _addLog(LogEntry log) {
     _logs.insert(0, log);
     

@@ -57,6 +57,11 @@ class CentralScannerViewModel extends ViewModel {
       final name = discovery.advertisement.name ?? '';
       final rssi = discovery.rssi;
       
+      // INMO Go 2 필터 - 이 기기들만 표시
+      if (!name.toLowerCase().contains('inmo go 2')) {
+        return false;
+      }
+      
       // 이름 없는 기기 필터
       if (_hideUnnamedDevices && (name.isEmpty || name.trim().isEmpty)) {
         return false;

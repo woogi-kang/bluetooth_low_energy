@@ -5,9 +5,6 @@ import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 
 import '../view_models/peripheral_manager_view_model.dart';
 import '../widgets/status_dashboard.dart';
-import '../widgets/connection_panel.dart';
-import '../widgets/control_panel.dart';
-import '../widgets/log_viewer.dart';
 
 class HomeView extends StatefulWidget {
   const HomeView({super.key});
@@ -23,138 +20,139 @@ class _HomeViewState extends State<HomeView> {
     final state = viewModel.state;
 
     return Scaffold(
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 200,
-            floating: false,
-            pinned: true,
-            backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text('BLE 주변기기 관리자'),
-              background: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Theme.of(context).colorScheme.primaryContainer,
-                      Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.8),
-                    ],
-                  ),
-                ),
-                child: Stack(
-                  children: [
-                    Positioned.fill(
-                      child: Icon(
-                        Symbols.sensors,
-                        size: 120,
-                        color: Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: 60,
-                      left: 16,
-                      right: 16,
-                      child: StatusDashboard(viewModel: viewModel),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              IconButton(
-                onPressed: () => _showSettingsDialog(context, viewModel),
-                icon: const Icon(Symbols.settings),
-                tooltip: '설정',
-              ),
-              IconButton(
-                onPressed: () => _showInfoDialog(context),
-                icon: const Icon(Symbols.info),
-                tooltip: '정보',
-              ),
-            ],
-          ),
-          SliverToBoxAdapter(
-            child: _buildMainContent(context, viewModel, state),
+      appBar: AppBar(
+        title: const Text('INMO GO 2'),
+        backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+        actions: [
+          IconButton(
+            onPressed: () => _showSettingsDialog(context, viewModel),
+            icon: const Icon(Symbols.settings),
+            tooltip: '설정',
           ),
         ],
       ),
+      body: _buildCompactContent(context, viewModel, state),
       floatingActionButton: _buildFloatingActionButton(context, viewModel, state),
     );
   }
 
-  Widget _buildMainContent(BuildContext context, PeripheralManagerViewModel viewModel, BluetoothLowEnergyState state) {
+  Widget _buildCompactContent(BuildContext context, PeripheralManagerViewModel viewModel, BluetoothLowEnergyState state) {
     if (state != BluetoothLowEnergyState.poweredOn) {
       return _buildStateView(context, state, viewModel);
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16),
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 연결 패널
-          _buildSectionHeader(context, '연결 관리', Symbols.devices),
+          // PIN 인증 상태 - 가장 중요한 정보를 맨 위에
+          StatusDashboard(viewModel: viewModel),
           const SizedBox(height: 12),
-          ConnectionPanel(viewModel: viewModel),
           
-          const SizedBox(height: 32),
-          
-          // 통계 섹션
-          _buildSectionHeader(context, '통계', Symbols.analytics),
+          // 연결 상태 요약
+          _buildConnectionSummary(context, viewModel),
           const SizedBox(height: 12),
-          _buildStatisticsCards(context, viewModel),
           
-          const SizedBox(height: 32),
-          
-          // 기기 정보 섹션
-          _buildSectionHeader(context, '기기 정보', Symbols.info),
+          // 기본 통계
+          _buildCompactStats(context, viewModel),
           const SizedBox(height: 12),
-          _buildDeviceInfoCard(context, viewModel),
           
-          const SizedBox(height: 32),
+          // 제어 버튼들
+          _buildQuickControls(context, viewModel),
           
-          // 제어 패널
-          _buildSectionHeader(context, '메시지 제어', Symbols.settings_remote),
-          const SizedBox(height: 12),
-          ControlPanel(viewModel: viewModel),
-          
-          const SizedBox(height: 32),
-          
-          // 로그 뷰어
-          _buildSectionHeader(context, '활동 로그', Symbols.list_alt),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 300, // 로그 뷰어 높이 제한
-            child: LogViewer(viewModel: viewModel),
-          ),
-          
-          const SizedBox(height: 100), // FloatingActionButton을 위한 여백
+          const SizedBox(height: 80), // FloatingActionButton을 위한 여백
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+  Widget _buildConnectionSummary(BuildContext context, PeripheralManagerViewModel viewModel) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(Symbols.devices, color: Theme.of(context).colorScheme.primary),
+            const SizedBox(width: 8),
+            Text(
+              '연결: ${viewModel.connectedCentralsCount}',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const Spacer(),
+            Icon(Symbols.notifications, color: Theme.of(context).colorScheme.secondary),
+            const SizedBox(width: 4),
+            Text('${viewModel.notifyEnabledCount}'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompactStats(BuildContext context, PeripheralManagerViewModel viewModel) {
     return Row(
       children: [
-        Icon(
-          icon,
-          color: Theme.of(context).colorScheme.primary,
-          size: 20,
+        Expanded(
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  Icon(Symbols.upload, size: 16, color: Colors.green),
+                  Text('${viewModel.dataPacketsSent}',
+                       style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('송신', style: TextStyle(fontSize: 10)),
+                ],
+              ),
+            ),
+          ),
         ),
-        const SizedBox(width: 8),
-        Text(
-          title,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
-            color: Theme.of(context).colorScheme.primary,
+        const SizedBox(width: 4),
+        Expanded(
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Column(
+                children: [
+                  Icon(Symbols.download, size: 16, color: Colors.orange),
+                  Text('${viewModel.dataPacketsReceived}',
+                       style: const TextStyle(fontWeight: FontWeight.bold)),
+                  const Text('수신', style: TextStyle(fontSize: 10)),
+                ],
+              ),
+            ),
           ),
         ),
       ],
     );
   }
+
+  Widget _buildQuickControls(BuildContext context, PeripheralManagerViewModel viewModel) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => viewModel.sendDataMessage('안녕하세요!'),
+                icon: const Icon(Symbols.send, size: 16),
+                label: const Text('인사 전송', style: TextStyle(fontSize: 12)),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () => viewModel.disconnectAll(),
+                icon: const Icon(Symbols.link_off, size: 16),
+                label: const Text('연결 해제', style: TextStyle(fontSize: 12)),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
 
   Widget _buildStateView(BuildContext context, BluetoothLowEnergyState state, PeripheralManagerViewModel viewModel) {
     IconData icon;
@@ -225,127 +223,6 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  Widget _buildStatisticsCards(BuildContext context, PeripheralManagerViewModel viewModel) {
-    return Row(
-      children: [
-        Expanded(
-          child: _buildStatCard(
-            context,
-            '총 연결',
-            viewModel.totalConnections.toString(),
-            Symbols.devices,
-            Colors.blue,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildStatCard(
-            context,
-            '송신',
-            viewModel.dataPacketsSent.toString(),
-            Symbols.upload,
-            Colors.green,
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: _buildStatCard(
-            context,
-            '수신',
-            viewModel.dataPacketsReceived.toString(),
-            Symbols.download,
-            Colors.orange,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatCard(
-    BuildContext context,
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 24),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDeviceInfoCard(BuildContext context, PeripheralManagerViewModel viewModel) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(
-                  Symbols.info,
-                  color: Theme.of(context).colorScheme.primary,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  '기기 정보',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            _buildInfoRow('기기 이름', viewModel.deviceName),
-            _buildInfoRow('플랫폼', viewModel.deviceInfo ?? '알 수 없음'),
-            _buildInfoRow('연결 품질', viewModel.connectionQuality),
-            _buildInfoRow('마지막 활동', _formatLastActivity(viewModel.lastActivity)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 80,
-            child: Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w500),
-            ),
-          ),
-          Expanded(
-            child: Text(value),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget? _buildFloatingActionButton(BuildContext context, PeripheralManagerViewModel viewModel, BluetoothLowEnergyState state) {
     if (state != BluetoothLowEnergyState.poweredOn) {
@@ -437,49 +314,4 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  void _showInfoDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('앱 정보'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('BLE 주변기기 관리자 v1.0.0'),
-            SizedBox(height: 8),
-            Text('Bluetooth Low Energy 주변기기 서비스를 제공하는 전문 도구입니다.'),
-            SizedBox(height: 16),
-            Text('주요 기능:'),
-            Text('• BLE 광고 서비스'),
-            Text('• 실시간 연결 관리'),
-            Text('• 인증 시스템'),
-            Text('• 데이터 송수신'),
-            Text('• 음성 메시지 전송'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('확인'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _formatLastActivity(DateTime dateTime) {
-    final now = DateTime.now();
-    final difference = now.difference(dateTime);
-    
-    if (difference.inMinutes < 1) {
-      return '방금 전';
-    } else if (difference.inHours < 1) {
-      return '${difference.inMinutes}분 전';
-    } else if (difference.inDays < 1) {
-      return '${difference.inHours}시간 전';
-    } else {
-      return '${difference.inDays}일 전';
-    }
-  }
 }
