@@ -53,6 +53,16 @@ class PeripheralViewModel extends ViewModel with TypeLogger {
 
   Future<void> connect() async {
     await _manager.connect(_peripheral);
+    
+    // MTU를 517로 설정
+    if (Platform.isAndroid || Platform.isWindows) {
+      try {
+        await _manager.requestMTU(_peripheral, mtu: 517);
+        logger.info('MTU set to 517');
+      } catch (e) {
+        logger.warning('Failed to set MTU: $e');
+      }
+    }
   }
 
   Future<void> disconnect() async {

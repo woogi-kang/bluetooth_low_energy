@@ -5,8 +5,8 @@ import 'package:clover/clover.dart';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
-class CharacteristicTreeNodeView extends StatelessWidget {
-  const CharacteristicTreeNodeView({super.key});
+class CompactCharacteristicView extends StatelessWidget {
+  const CompactCharacteristicView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,55 +17,58 @@ class CharacteristicTreeNodeView extends StatelessWidget {
     final descriptorCount = viewModel.descriptorViewModels.length;
     
     return Container(
-      margin: const EdgeInsets.only(left: 16, right: 8, top: 4, bottom: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
       child: Card(
-        elevation: 1,
+        elevation: 0.5,
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(6),
           side: BorderSide(
             color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.2),
           ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(8),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(4),
+                    padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.secondaryContainer,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                     child: Icon(
                       _getCharacteristicIcon(characteristicName, properties),
-                      size: 16,
+                      size: 12,
                       color: Theme.of(context).colorScheme.onSecondaryContainer,
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: Text(
                       characteristicName,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
+                        fontSize: 11,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   if (descriptorCount > 0)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                       decoration: BoxDecoration(
                         color: Colors.orange.shade100,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Text(
                         '${descriptorCount}D',
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 8,
                           color: Colors.orange.shade700,
                           fontWeight: FontWeight.w500,
                         ),
@@ -73,18 +76,21 @@ class CharacteristicTreeNodeView extends StatelessWidget {
                     ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Text(
                 '${viewModel.uuid}',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   fontFamily: 'monospace',
+                  fontSize: 8,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 4),
               Wrap(
-                spacing: 4,
-                runSpacing: 4,
+                spacing: 2,
+                runSpacing: 2,
                 children: _buildPropertyChips(context, properties),
               ),
             ],
@@ -124,21 +130,21 @@ class CharacteristicTreeNodeView extends StatelessWidget {
     return properties.map((property) {
       final (color, icon) = _getPropertyStyle(property);
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(8),
           border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 12, color: color),
-            const SizedBox(width: 4),
+            Icon(icon, size: 8, color: color),
+            const SizedBox(width: 2),
             Text(
               _getPropertyName(property),
               style: TextStyle(
-                fontSize: 11,
+                fontSize: 8,
                 color: color,
                 fontWeight: FontWeight.w600,
               ),
@@ -166,15 +172,15 @@ class CharacteristicTreeNodeView extends StatelessWidget {
   String _getPropertyName(GATTCharacteristicProperty property) {
     switch (property) {
       case GATTCharacteristicProperty.read:
-        return 'READ';
+        return 'R';
       case GATTCharacteristicProperty.write:
-        return 'WRITE';
+        return 'W';
       case GATTCharacteristicProperty.writeWithoutResponse:
-        return 'WRITE_NR';
+        return 'W_NR';
       case GATTCharacteristicProperty.notify:
-        return 'NOTIFY';
+        return 'N';
       case GATTCharacteristicProperty.indicate:
-        return 'INDICATE';
+        return 'I';
     }
   }
 }

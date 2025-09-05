@@ -41,9 +41,27 @@ class CharacteristicViewModel extends ViewModel {
           if (eventArgs.characteristic != _characteristic) {
             return;
           }
+          
+          // 데이터를 텍스트로 변환 시도 (음성 패킷은 unsigned int로 표시)
+          String displayMessage;
+          final dataLength = eventArgs.value.length;
+          
+          if (dataLength == 200) {
+            // 200바이트는 음성 패킷으로 간주
+            final uintValues = eventArgs.value.map((byte) => byte.toUnsigned(8)).join(', ');
+            displayMessage = '음성 패킷 수신 [${dataLength}bytes]: $uintValues';
+          } else {
+            try {
+              final textData = String.fromCharCodes(eventArgs.value);
+              displayMessage = '받은 메시지: "$textData"';
+            } catch (e) {
+              displayMessage = '[$dataLength] ${eventArgs.value}';
+            }
+          }
+          
           final log = Log(
             type: 'Notified',
-            message: '[${eventArgs.value.length}] ${eventArgs.value}',
+            message: displayMessage,
           );
           _logs.add(log);
           notifyListeners();
@@ -51,6 +69,7 @@ class CharacteristicViewModel extends ViewModel {
   }
 
   UUID get uuid => _characteristic.uuid;
+  GATTCharacteristic get characteristic => _characteristic;
   bool get canRead =>
       _characteristic.properties.contains(GATTCharacteristicProperty.read);
   bool get canWrite =>
@@ -106,12 +125,21 @@ class CharacteristicViewModel extends ViewModel {
         value: fragmentedValue,
         type: type,
       );
+      // 전송한 데이터를 텍스트로 변환 시도
+      String displayMessage;
+      try {
+        final textData = String.fromCharCodes(value);
+        displayMessage = '보낸 메시지: "$textData"';
+      } catch (e) {
+        displayMessage = '[${value.length}] $value';
+      }
+      
       final log = Log(
         type:
             type == GATTCharacteristicWriteType.withResponse
                 ? 'Write'
                 : 'Write without response',
-        message: '[${value.length}] $value',
+        message: displayMessage,
       );
       _logs.add(log);
       notifyListeners();

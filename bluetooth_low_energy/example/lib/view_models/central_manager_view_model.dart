@@ -26,6 +26,13 @@ class CentralManagerViewModel extends ViewModel {
     });
     _discoveredSubscription = _manager.discovered.listen((eventArgs) {
       final peripheral = eventArgs.peripheral;
+      final name = eventArgs.advertisement.name;
+      
+      // 기기 이름이 없는 경우 필터링
+      if (name == null || name.isEmpty) {
+        return;
+      }
+      
       final index = _discoveries.indexWhere((i) => i.peripheral == peripheral);
       if (index < 0) {
         _discoveries.add(eventArgs);
