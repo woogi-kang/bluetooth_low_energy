@@ -15,12 +15,17 @@ class StatusDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     final advertising = viewModel.advertising;
     final connectedCount = viewModel.connectedCentralsCount;
-    final notifyCount = viewModel.notifyEnabledCount;
     final waitingForAuth = viewModel.waitingForAuth;
     final currentAuthCode = viewModel.currentAuthCode;
 
     return Column(
       children: [
+        // PIN 표시가 최우선 - 맨 위에 크게 표시
+        if (waitingForAuth && currentAuthCode != null) ...[
+          _buildAuthCodeCard(context, currentAuthCode),
+          const SizedBox(height: 12),
+        ],
+        // 간단한 상태 표시
         Row(
           children: [
             Expanded(
@@ -28,7 +33,7 @@ class StatusDashboard extends StatelessWidget {
                 context,
                 icon: advertising ? Symbols.broadcast_on_personal : Symbols.sensors,
                 title: advertising ? '광고 중' : '대기 중',
-                subtitle: advertising ? '클라이언트 검색 가능' : '서비스 대기',
+                subtitle: advertising ? '검색 가능' : '서비스 대기',
                 color: advertising ? Colors.green : Colors.grey,
               ),
             ),
@@ -40,20 +45,8 @@ class StatusDashboard extends StatelessWidget {
               label: '연결',
               color: connectedCount > 0 ? Colors.blue : Colors.grey,
             ),
-            const SizedBox(width: 8),
-            _buildCountCard(
-              context,
-              icon: Symbols.notifications,
-              count: notifyCount,
-              label: 'Notify',
-              color: notifyCount > 0 ? Colors.purple : Colors.grey,
-            ),
           ],
         ),
-        if (waitingForAuth && currentAuthCode != null) ...[
-          const SizedBox(height: 12),
-          _buildAuthCodeCard(context, currentAuthCode),
-        ],
       ],
     );
   }
@@ -203,19 +196,26 @@ class StatusDashboard extends StatelessWidget {
           ),
           const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
             decoration: BoxDecoration(
               color: Colors.red.shade700,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.shade300,
+                  blurRadius: 8,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Text(
               authCode,
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
-                letterSpacing: 8,
+                letterSpacing: 10,
                 fontFamily: 'monospace',
-                fontSize: 28,
+                fontSize: 32,
               ),
             ),
           ),

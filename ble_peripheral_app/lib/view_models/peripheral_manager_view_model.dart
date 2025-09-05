@@ -212,9 +212,14 @@ class PeripheralManagerViewModel extends ViewModel {
       await _manager.startAdvertising(advertisement);
       
       _advertising = true;
+      
+      // 테스트를 위해 광고 시작시 바로 PIN 표시
+      _currentAuthCode = _generateAuthCode();
+      _waitingForAuth = true;
+      
       _addLog(LogEntry(
         level: LogLevel.success,
-        message: '광고 시작: $_deviceName',
+        message: '광고 시작: $_deviceName (테스트 PIN: $_currentAuthCode)',
         timestamp: DateTime.now(),
       ));
       
