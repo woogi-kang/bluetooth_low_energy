@@ -16,22 +16,7 @@ class HomeView extends StatefulWidget {
   State<HomeView> createState() => _HomeViewState();
 }
 
-class _HomeViewState extends State<HomeView>
-    with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 3, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
-
+class _HomeViewState extends State<HomeView> {
   @override
   Widget build(BuildContext context) {
     final viewModel = ViewModel.of<PeripheralManagerViewModel>(context);
@@ -89,42 +74,9 @@ class _HomeViewState extends State<HomeView>
                 tooltip: '정보',
               ),
             ],
-            bottom: PreferredSize(
-              preferredSize: const Size.fromHeight(48),
-              child: Container(
-                color: Theme.of(context).colorScheme.surface,
-                child: TabBar(
-                  controller: _tabController,
-                  indicatorColor: Theme.of(context).colorScheme.primary,
-                  labelColor: Theme.of(context).colorScheme.primary,
-                  unselectedLabelColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
-                  tabs: [
-                    Tab(
-                      icon: const Icon(Symbols.dashboard),
-                      text: '대시보드',
-                    ),
-                    Tab(
-                      icon: const Icon(Symbols.settings_remote),
-                      text: '제어',
-                    ),
-                    Tab(
-                      icon: const Icon(Symbols.list_alt),
-                      text: '로그',
-                    ),
-                  ],
-                ),
-              ),
-            ),
           ),
-          SliverFillRemaining(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildDashboardTab(context, viewModel, state),
-                _buildControlTab(context, viewModel, state),
-                _buildLogTab(context, viewModel),
-              ],
-            ),
+          SliverToBoxAdapter(
+            child: _buildMainContent(context, viewModel, state),
           ),
         ],
       ),
@@ -132,42 +84,76 @@ class _HomeViewState extends State<HomeView>
     );
   }
 
-  Widget _buildDashboardTab(BuildContext context, PeripheralManagerViewModel viewModel, BluetoothLowEnergyState state) {
+  Widget _buildMainContent(BuildContext context, PeripheralManagerViewModel viewModel, BluetoothLowEnergyState state) {
     if (state != BluetoothLowEnergyState.poweredOn) {
       return _buildStateView(context, state, viewModel);
     }
 
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // 연결 패널
+          _buildSectionHeader(context, '연결 관리', Symbols.devices),
+          const SizedBox(height: 12),
           ConnectionPanel(viewModel: viewModel),
-          const SizedBox(height: 16),
+          
+          const SizedBox(height: 32),
+          
+          // 통계 섹션
+          _buildSectionHeader(context, '통계', Symbols.analytics),
+          const SizedBox(height: 12),
           _buildStatisticsCards(context, viewModel),
-          const SizedBox(height: 16),
+          
+          const SizedBox(height: 32),
+          
+          // 기기 정보 섹션
+          _buildSectionHeader(context, '기기 정보', Symbols.info),
+          const SizedBox(height: 12),
           _buildDeviceInfoCard(context, viewModel),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildControlTab(BuildContext context, PeripheralManagerViewModel viewModel, BluetoothLowEnergyState state) {
-    if (state != BluetoothLowEnergyState.poweredOn) {
-      return _buildStateView(context, state, viewModel);
-    }
-
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
+          
+          const SizedBox(height: 32),
+          
+          // 제어 패널
+          _buildSectionHeader(context, '메시지 제어', Symbols.settings_remote),
+          const SizedBox(height: 12),
           ControlPanel(viewModel: viewModel),
+          
+          const SizedBox(height: 32),
+          
+          // 로그 뷰어
+          _buildSectionHeader(context, '활동 로그', Symbols.list_alt),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 300, // 로그 뷰어 높이 제한
+            child: LogViewer(viewModel: viewModel),
+          ),
+          
+          const SizedBox(height: 100), // FloatingActionButton을 위한 여백
         ],
       ),
     );
   }
 
-  Widget _buildLogTab(BuildContext context, PeripheralManagerViewModel viewModel) {
-    return LogViewer(viewModel: viewModel);
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(
+          icon,
+          color: Theme.of(context).colorScheme.primary,
+          size: 20,
+        ),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildStateView(BuildContext context, BluetoothLowEnergyState state, PeripheralManagerViewModel viewModel) {
@@ -240,48 +226,36 @@ class _HomeViewState extends State<HomeView>
   }
 
   Widget _buildStatisticsCards(BuildContext context, PeripheralManagerViewModel viewModel) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
       children: [
-        Text(
-          '통계',
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-            fontWeight: FontWeight.bold,
+        Expanded(
+          child: _buildStatCard(
+            context,
+            '총 연결',
+            viewModel.totalConnections.toString(),
+            Symbols.devices,
+            Colors.blue,
           ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _buildStatCard(
-                context,
-                '총 연결',
-                viewModel.totalConnections.toString(),
-                Symbols.devices,
-                Colors.blue,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildStatCard(
-                context,
-                '송신',
-                viewModel.dataPacketsSent.toString(),
-                Symbols.upload,
-                Colors.green,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildStatCard(
-                context,
-                '수신',
-                viewModel.dataPacketsReceived.toString(),
-                Symbols.download,
-                Colors.orange,
-              ),
-            ),
-          ],
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildStatCard(
+            context,
+            '송신',
+            viewModel.dataPacketsSent.toString(),
+            Symbols.upload,
+            Colors.green,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildStatCard(
+            context,
+            '수신',
+            viewModel.dataPacketsReceived.toString(),
+            Symbols.download,
+            Colors.orange,
+          ),
         ),
       ],
     );

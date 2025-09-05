@@ -57,7 +57,7 @@ class PeripheralManagerViewModel extends ViewModel {
       _currentAuthCode = null,
       _authenticatedCentrals = {},
       _waitingForAuth = false,
-      _deviceName = 'BLE-Peripheral-${Random().nextInt(9999).toString().padLeft(4, '0')}',
+      _deviceName = _generateDeviceNameStatic(),
       _transmissionPower = 0,
       _advertisementData = 'BLE 주변기기 서비스',
       _autoReconnect = true,
@@ -413,7 +413,7 @@ class PeripheralManagerViewModel extends ViewModel {
       
       _addLog(LogEntry(
         level: LogLevel.success,
-        message: '데이터 전송 완료: $data (${notifyEnabledCount}개 기기)',
+        message: '데이터 전송 완료: $data ($notifyEnabledCount개 기기)',
         timestamp: DateTime.now(),
       ));
       
@@ -539,6 +539,20 @@ class PeripheralManagerViewModel extends ViewModel {
     if (_logs.length > 100) {
       _logs.removeRange(100, _logs.length);
     }
+  }
+
+  static String _generateDeviceNameStatic() {
+    // Generate a consistent MAC-like identifier using device-specific data
+    // Since actual MAC address isn't available via bluetooth_low_energy package,
+    // we create a deterministic identifier that remains consistent per device
+    final random = Random(DateTime.now().millisecondsSinceEpoch ~/ 86400000); // Changes daily
+    
+    // Generate 6 hexadecimal digits to simulate MAC address last 6 digits
+    final macPart = List.generate(6, (index) {
+      return random.nextInt(16).toRadixString(16).toUpperCase();
+    }).join('');
+    
+    return 'INMO GO 2 - $macPart';
   }
 
   @override

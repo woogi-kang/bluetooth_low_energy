@@ -242,7 +242,7 @@ class ConnectionPanel extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  central.toString().substring(0, 16) + '...',
+                  '${central.toString().substring(0, 16)}...',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Colors.grey.shade600,
                     fontFamily: 'monospace',

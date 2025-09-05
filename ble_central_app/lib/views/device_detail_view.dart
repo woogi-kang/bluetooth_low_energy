@@ -236,9 +236,6 @@ class _DeviceDetailViewState extends State<DeviceDetailView> {
         color = Colors.red;
         label = '지시';
         break;
-      default:
-        color = Colors.grey;
-        label = property.toString();
     }
 
     return Chip(

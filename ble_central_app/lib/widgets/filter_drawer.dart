@@ -233,7 +233,7 @@ class _FilterDrawerState extends State<FilterDrawer> {
                 dense: true,
                 contentPadding: EdgeInsets.zero,
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
