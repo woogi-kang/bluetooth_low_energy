@@ -5,6 +5,7 @@ import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 
 import '../view_models/central_scanner_view_model.dart';
 import '../models/device_info.dart';
+import '../views/device_detail_view.dart';
 import 'signal_indicator.dart';
 
 class DeviceCard extends StatelessWidget {
@@ -289,7 +290,14 @@ class DeviceCard extends StatelessWidget {
         Expanded(
           child: OutlinedButton.icon(
             onPressed: () {
-              onTap?.call(); // 기존의 상세 정보 표시
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => DeviceDetailView(
+                    discovery: discovery,
+                    viewModel: viewModel,
+                  ),
+                ),
+              );
             },
             icon: const Icon(Symbols.info, size: 16),
             label: const Text('상세정보'),
