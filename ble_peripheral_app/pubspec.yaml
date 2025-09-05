@@ -1,0 +1,38 @@
+name: ble_peripheral_app
+description: A specialized BLE Peripheral advertising application with enhanced UI.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.7.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  bluetooth_low_energy:
+    path: ../bluetooth_low_energy
+  
+  # UI Components
+  cupertino_icons: ^1.0.8
+  material_symbols_icons: ^4.2744.0
+  
+  # State Management & Architecture  
+  clover: ^4.0.1
+  go_router: ^16.0.0
+  
+  # Utilities
+  intl: any
+  logging: ^1.2.0
+  hybrid_logging: ^1.0.0
+  collection: ^1.18.0
+  convert: ^3.1.1
+  record: ^6.1.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
