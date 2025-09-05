@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
 import 'package:clover/clover.dart';
@@ -14,6 +15,7 @@ class CentralScannerViewModel extends ViewModel {
   int _rssiThreshold;
   String _searchQuery;
   List<UUID>? _serviceFilter;
+  bool _hideUnnamedDevices;
 
   late final StreamSubscription _stateChangedSubscription;
   late final StreamSubscription _discoveredSubscription;
@@ -26,7 +28,8 @@ class CentralScannerViewModel extends ViewModel {
         _filterByRSSI = false,
         _rssiThreshold = -80,
         _searchQuery = '',
-        _serviceFilter = null {
+        _serviceFilter = null,
+        _hideUnnamedDevices = true {
     _stateChangedSubscription = _manager.stateChanged.listen((eventArgs) async {
       if (eventArgs.state == BluetoothLowEnergyState.unauthorized &&
           Platform.isAndroid) {
@@ -47,11 +50,17 @@ class CentralScannerViewModel extends ViewModel {
   String get searchQuery => _searchQuery;
   List<UUID>? get serviceFilter => _serviceFilter;
   Set<String> get favoriteDevices => _favoriteDevices;
+  bool get hideUnnamedDevices => _hideUnnamedDevices;
 
   List<DiscoveredEventArgs> get discoveries {
     var filtered = _discoveries.where((discovery) {
       final name = discovery.advertisement.name ?? '';
       final rssi = discovery.rssi;
+      
+      // 이름 없는 기기 필터
+      if (_hideUnnamedDevices && (name.isEmpty || name.trim().isEmpty)) {
+        return false;
+      }
       
       // RSSI 필터
       if (_filterByRSSI && rssi < _rssiThreshold) {
@@ -129,6 +138,73 @@ class CentralScannerViewModel extends ViewModel {
       _favoriteDevices.add(deviceUuid);
     }
     notifyListeners();
+  }
+  
+  void toggleHideUnnamedDevices() {
+    _hideUnnamedDevices = !_hideUnnamedDevices;
+    notifyListeners();
+  }
+  
+  // Connection management
+  Future<void> connectToDevice(DiscoveredEventArgs discovery) async {
+    try {
+      await _manager.connect(discovery.peripheral);
+      // Connection successful - will be handled by connection state listener
+    } catch (e) {
+      // Handle connection error
+      rethrow;
+    }
+  }
+  
+  Future<void> disconnectFromDevice(Peripheral peripheral) async {
+    try {
+      await _manager.disconnect(peripheral);
+    } catch (e) {
+      // Handle disconnection error
+      rethrow;
+    }
+  }
+  
+  Future<List<GATTService>> discoverServices(Peripheral peripheral) async {
+    try {
+      return await _manager.discoverGATT(peripheral);
+    } catch (e) {
+      rethrow;
+    }
+  }
+  
+  Future<void> writeCharacteristic(
+    Peripheral peripheral,
+    GATTCharacteristic characteristic,
+    Uint8List value,
+  ) async {
+    try {
+      // 최대 쓰기 길이 확인
+      final fragmentSize = await _manager.getMaximumWriteLength(
+        peripheral,
+        type: GATTCharacteristicWriteType.withResponse,
+      );
+      
+      // 값을 조각화하여 전송
+      var start = 0;
+      while (start < value.length) {
+        final end = start + fragmentSize;
+        final fragmentedValue = end < value.length
+            ? value.sublist(start, end)
+            : value.sublist(start);
+        
+        await _manager.writeCharacteristic(
+          peripheral,
+          characteristic,
+          value: fragmentedValue,
+          type: GATTCharacteristicWriteType.withResponse,
+        );
+        
+        start = end;
+      }
+    } catch (e) {
+      rethrow;
+    }
   }
 
   bool isFavorite(String deviceUuid) {

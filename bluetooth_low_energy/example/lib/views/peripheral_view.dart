@@ -256,49 +256,53 @@ class _PeripheralViewState extends State<PeripheralView> with SingleTickerProvid
   }
 
   Widget _buildCompactServicesView(List<ServiceViewModel> serviceViewModels) {
-    return SingleChildScrollView(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // 작은 헤더
-          Container(
-            padding: const EdgeInsets.all(8),
-            child: Row(
-              children: [
-                Icon(
-                  Symbols.list_alt,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'GATT 서비스 (${serviceViewModels.length}개)',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+    return Scrollbar(
+      child: SingleChildScrollView(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // 작은 헤더
+            Container(
+              padding: const EdgeInsets.all(8),
+              child: Row(
+                children: [
+                  Icon(
+                    Symbols.list_alt,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 16,
                   ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'GATT 서비스 (${serviceViewModels.length}개)',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // 서비스 목록을 단순한 리스트로 표시
+            ...serviceViewModels.map((serviceViewModel) => Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                InheritedViewModel(
+                  viewModel: serviceViewModel,
+                  view: const CompactServiceView(),
+                ),
+                // 해당 서비스의 특성들 표시
+                ...serviceViewModel.characteristicViewModels.map((charViewModel) => 
+                  InheritedViewModel(
+                    viewModel: charViewModel,
+                    view: const CompactCharacteristicView(),
+                  )
                 ),
               ],
-            ),
-          ),
-          // 서비스 목록을 단순한 리스트로 표시
-          ...serviceViewModels.map((serviceViewModel) => Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              InheritedViewModel(
-                viewModel: serviceViewModel,
-                view: const CompactServiceView(),
-              ),
-              // 해당 서비스의 특성들 표시
-              ...serviceViewModel.characteristicViewModels.map((charViewModel) => 
-                InheritedViewModel(
-                  viewModel: charViewModel,
-                  view: const CompactCharacteristicView(),
-                )
-              ),
-            ],
-          )),
-          const SizedBox(height: 16), // 하단 여백
-        ],
+            )),
+            const SizedBox(height: 80), // 더 큰 하단 여백으로 스크롤 여유 공간 확보
+          ],
+        ),
       ),
     );
   }

@@ -323,11 +323,11 @@ class _FilterDrawerState extends State<FilterDrawer> {
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('이름 없는 기기 표시'),
-              subtitle: const Text('이름이 설정되지 않은 기기도 표시'),
-              value: true, // TODO: 실제 설정과 연결
+              title: const Text('이름 없는 기기 숨기기'),
+              subtitle: const Text('이름이 설정되지 않은 기기를 스캔 목록에서 숨김'),
+              value: widget.viewModel.hideUnnamedDevices,
               onChanged: (value) {
-                // TODO: 이름 없는 기기 표시 설정 구현
+                widget.viewModel.toggleHideUnnamedDevices();
               },
               contentPadding: EdgeInsets.zero,
             ),

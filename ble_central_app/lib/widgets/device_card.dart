@@ -1,3 +1,4 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 import 'package:bluetooth_low_energy/bluetooth_low_energy.dart';
@@ -95,6 +96,8 @@ class DeviceCard extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _buildDeviceDetails(context, deviceInfo),
+              const SizedBox(height: 12),
+              _buildActionButtons(context),
             ],
           ),
         ),
@@ -278,6 +281,200 @@ class DeviceCard extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildActionButtons(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () {
+              onTap?.call(); // 기존의 상세 정보 표시
+            },
+            icon: const Icon(Symbols.info, size: 16),
+            label: const Text('상세정보'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () async {
+              try {
+                await _handleConnect(context);
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('연결 실패: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            icon: const Icon(Symbols.link, size: 16),
+            label: const Text('연결하기'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+  
+  Future<void> _handleConnect(BuildContext context) async {
+    // 연결 시작 시 로딩 표시
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const AlertDialog(
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('기기에 연결하는 중...'),
+          ],
+        ),
+      ),
+    );
+    
+    try {
+      await viewModel.connectToDevice(discovery);
+      
+      if (context.mounted) {
+        Navigator.of(context).pop(); // 로딩 대화상자 닫기
+        
+        // 연결 성공 시 PIN 인증 대화상자 표시
+        _showPinAuthDialog(context);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        Navigator.of(context).pop(); // 로딩 대화상자 닫기
+      }
+      rethrow;
+    }
+  }
+  
+  void _showPinAuthDialog(BuildContext context) {
+    final TextEditingController pinController = TextEditingController();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('PIN 인증'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${discovery.advertisement.name ?? "기기"}와 연결하기 위해\n4자리 PIN을 입력하세요.',
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: pinController,
+              keyboardType: TextInputType.number,
+              maxLength: 4,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 4,
+              ),
+              decoration: const InputDecoration(
+                hintText: '••••',
+                border: OutlineInputBorder(),
+                counterText: '',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // TODO: 연결 해제
+            },
+            child: const Text('취소'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final pin = pinController.text;
+              if (pin.length == 4) {
+                Navigator.of(context).pop();
+                _handlePinAuthentication(context, pin);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('4자리 PIN을 입력해주세요'),
+                  ),
+                );
+              }
+            },
+            child: const Text('인증'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Future<void> _handlePinAuthentication(BuildContext context, String pin) async {
+    try {
+      // GATT 서비스 탐지  
+      // CentralManager에 직접 접근하는 대신 viewModel을 통해 접근
+      final services = await viewModel.discoverServices(discovery.peripheral);
+      
+      // 기본 서비스 UUID를 사용해서 쓰기 가능한 특성 찾기
+      GATTCharacteristic? writeCharacteristic;
+      for (final service in services) {
+        for (final characteristic in service.characteristics) {
+          // 쓰기 가능한 특성 찾기
+          if (characteristic.properties.contains(GATTCharacteristicProperty.write) ||
+              characteristic.properties.contains(GATTCharacteristicProperty.writeWithoutResponse)) {
+            writeCharacteristic = characteristic;
+            break;
+          }
+        }
+        if (writeCharacteristic != null) break;
+      }
+      
+      if (writeCharacteristic != null) {
+        // PIN 인증 메시지 전송
+        final authMessage = 'AUTH:$pin';
+        final bytes = authMessage.codeUnits;
+        
+        await viewModel.writeCharacteristic(
+          discovery.peripheral,
+          writeCharacteristic,
+          Uint8List.fromList(bytes),
+        );
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('PIN $pin으로 인증 요청을 전송했습니다'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        throw Exception('쓰기 가능한 GATT 특성을 찾을 수 없습니다');
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PIN 인증 전송 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Color _getSignalColor(int rssi) {

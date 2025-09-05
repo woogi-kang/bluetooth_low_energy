@@ -480,29 +480,49 @@ class CentralManagerView extends StatelessWidget {
 
       if (viewModel.discovering) {
         await viewModel.stopDiscovery();
-        if (!context.mounted) return;
+        if (!context.mounted) {
+          if (dialogShown) {
+            try {
+              Navigator.of(context, rootNavigator: true).pop();
+            } catch (e) {
+              // 다이얼로그가 이미 닫혔거나 context가 유효하지 않은 경우 무시
+            }
+          }
+          return;
+        }
       }
       
       await Future.delayed(const Duration(milliseconds: 500));
       
-      if (!context.mounted) return;
-      
-      // 다이얼로그 안전하게 닫기
-      if (dialogShown && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-        dialogShown = false;
+      if (!context.mounted) {
+        if (dialogShown) {
+          try {
+            Navigator.of(context, rootNavigator: true).pop();
+          } catch (e) {
+            // 다이얼로그가 이미 닫혔거나 context가 유효하지 않은 경우 무시
+          }
+        }
+        return;
       }
       
       final uuid = discovery.peripheral.uuid;
+      
+      // 페이지 전환 전에 다이얼로그 먼저 닫기
+      _closeDialog(context, dialogShown);
+      dialogShown = false;
+      
+      // 짧은 지연 후 페이지 전환
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      if (!context.mounted) return;
+      
       context.go('/central/$uuid');
     } catch (e) {
       if (!context.mounted) return;
       
       // 다이얼로그 안전하게 닫기
-      if (dialogShown && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop();
-        dialogShown = false;
-      }
+      _closeDialog(context, dialogShown);
+      dialogShown = false;
       
       // 에러 다이얼로그 표시
       showDialog(
@@ -518,6 +538,16 @@ class CentralManagerView extends StatelessWidget {
           ],
         ),
       );
+    }
+  }
+
+  void _closeDialog(BuildContext context, bool dialogShown) {
+    if (dialogShown && context.mounted) {
+      try {
+        Navigator.of(context, rootNavigator: true).pop();
+      } catch (e) {
+        // 다이얼로그가 이미 닫혔거나 context가 유효하지 않은 경우 무시
+      }
     }
   }
 
