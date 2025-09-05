@@ -17,11 +17,13 @@ class PeripheralManagerView extends StatefulWidget {
 
 class _PeripheralManagerViewState extends State<PeripheralManagerView> {
   late final TextEditingController _textController;
+  late final TextEditingController _deviceNameController;
 
   @override
   void initState() {
     super.initState();
     _textController = TextEditingController();
+    _deviceNameController = TextEditingController();
   }
 
   @override
@@ -102,8 +104,10 @@ class _PeripheralManagerViewState extends State<PeripheralManagerView> {
             if (viewModel.waitingForAuth || viewModel.hasAuthenticatedCentrals)
               _buildAuthenticationCard(context, viewModel),
             _buildControlsSection(context, viewModel),
-          ] else
+          ] else ...[
+            _buildDeviceNameSettings(context, viewModel),
             _buildInactiveState(context),
+          ],
           Expanded(
             child: _buildLogsSection(context, viewModel),
           ),
@@ -479,6 +483,68 @@ class _PeripheralManagerViewState extends State<PeripheralManagerView> {
     );
   }
 
+  Widget _buildDeviceNameSettings(BuildContext context, PeripheralManagerViewModel viewModel) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Card(
+        elevation: 2,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Symbols.edit,
+                    color: Theme.of(context).colorScheme.primary,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '기기 이름 설정',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      '현재 이름: ${viewModel.deviceName}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: viewModel.advertising ? null : () => _showDeviceNameDialog(context, viewModel),
+                    icon: Icon(Symbols.edit, size: 16),
+                    label: const Text('변경'),
+                    style: ElevatedButton.styleFrom(
+                      minimumSize: const Size(0, 32),
+                    ),
+                  ),
+                ],
+              ),
+              if (viewModel.advertising)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '광고 중에는 이름을 변경할 수 없습니다',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Colors.orange,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildInactiveState(BuildContext context) {
     return Expanded(
       child: Center(
@@ -680,9 +746,69 @@ class _PeripheralManagerViewState extends State<PeripheralManagerView> {
     }
   }
 
+  Future<void> _showDeviceNameDialog(BuildContext context, PeripheralManagerViewModel viewModel) async {
+    _deviceNameController.text = viewModel.deviceName;
+    
+    return showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Row(
+            children: [
+              Icon(Symbols.edit, color: Theme.of(context).colorScheme.primary),
+              const SizedBox(width: 8),
+              const Text('기기 이름 변경'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                '다른 기기에서 표시될 이름을 설정하세요',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _deviceNameController,
+                decoration: InputDecoration(
+                  labelText: '기기 이름',
+                  hintText: 'BLE-12138',
+                  prefixIcon: Icon(Symbols.devices),
+                  border: OutlineInputBorder(),
+                ),
+                maxLength: 20,
+                textInputAction: TextInputAction.done,
+              ),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('취소'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final newName = _deviceNameController.text.trim();
+                if (newName.isNotEmpty) {
+                  viewModel.setDeviceName(newName);
+                }
+                Navigator.of(context).pop();
+              },
+              child: const Text('확인'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
     _textController.dispose();
+    _deviceNameController.dispose();
     super.dispose();
   }
 }

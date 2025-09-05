@@ -25,6 +25,9 @@ class PeripheralManagerViewModel extends ViewModel {
   Timer? _authTimer;
   final Map<Central, bool> _authenticatedCentrals;
   bool _waitingForAuth;
+  
+  // 기기 이름 관련 변수
+  String _deviceName;
 
   late final StreamSubscription _stateChangedSubscription;
   late final StreamSubscription _characteristicReadRequestedSubscription;
@@ -43,7 +46,8 @@ class PeripheralManagerViewModel extends ViewModel {
       _isRecording = false,
       _currentAuthCode = null,
       _authenticatedCentrals = {},
-      _waitingForAuth = false {
+      _waitingForAuth = false,
+      _deviceName = 'BLE-12138' {
     _stateChangedSubscription = _manager.stateChanged.listen((eventArgs) async {
       if (eventArgs.state == BluetoothLowEnergyState.unauthorized &&
           Platform.isAndroid) {
@@ -162,9 +166,18 @@ class PeripheralManagerViewModel extends ViewModel {
   int get notifyEnabledCount => _centralNotifyStates.values.where((enabled) => enabled).length;
   String? get deviceInfo => _deviceInfo;
   bool get isRecording => _isRecording;
+  String get deviceName => _deviceName;
 
   Future<void> showAppSettings() async {
     await _manager.showAppSettings();
+  }
+
+  void setDeviceName(String name) {
+    if (_advertising) {
+      return; // 광고 중에는 이름 변경 불가
+    }
+    _deviceName = name;
+    notifyListeners();
   }
 
   Future<void> startAdvertising() async {
@@ -206,7 +219,7 @@ class PeripheralManagerViewModel extends ViewModel {
     );
     await _manager.addService(service);
     final advertisement = Advertisement(
-      name: Platform.isWindows ? null : 'BLE-12138',
+      name: Platform.isWindows ? null : _deviceName,
       manufacturerSpecificData:
           Platform.isIOS || Platform.isMacOS
               ? []
@@ -221,7 +234,7 @@ class PeripheralManagerViewModel extends ViewModel {
     _advertising = true;
     
     // 기기 정보 설정
-    final deviceName = advertisement.name ?? 'BLE-12138';
+    final deviceName = advertisement.name ?? _deviceName;
     _deviceInfo = '기기명: $deviceName';
     
     notifyListeners();

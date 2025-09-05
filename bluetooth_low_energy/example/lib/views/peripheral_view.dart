@@ -4,13 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_simple_treeview/flutter_simple_treeview.dart';
 import 'package:material_symbols_icons/material_symbols_icons.dart';
 
-import 'characteristic_tree_node_view.dart';
 import 'characteristic_view.dart';
 import 'compact_characteristic_view.dart';
 import 'compact_descriptor_view.dart';
 import 'compact_service_view.dart';
-import 'descriptor_tree_node_view.dart';
-import 'service_tree_node_view.dart';
 
 class PeripheralView extends StatefulWidget {
   final TreeController _treeController;
@@ -25,7 +22,6 @@ class PeripheralView extends StatefulWidget {
 class _PeripheralViewState extends State<PeripheralView> with SingleTickerProviderStateMixin {
   bool _isConnecting = false;
   late AnimationController _animationController;
-  late Animation<double> _fadeAnimation;
 
   @override
   void initState() {
@@ -34,7 +30,6 @@ class _PeripheralViewState extends State<PeripheralView> with SingleTickerProvid
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
     _animationController.forward();
     
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -137,8 +132,9 @@ class _PeripheralViewState extends State<PeripheralView> with SingleTickerProvid
     } else if (serviceViewModels.isEmpty) {
       return _buildCompactEmptyView();
     } else {
-      return FadeTransition(
-        opacity: _fadeAnimation,
+      return AnimatedOpacity(
+        opacity: _animationController.isCompleted ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 500),
         child: _buildCompactServicesView(serviceViewModels),
       );
     }
@@ -407,45 +403,4 @@ class _PeripheralViewState extends State<PeripheralView> with SingleTickerProvid
   }
 
 
-  List<TreeNode> _buildCharacteristicTreeNodes(
-    List<CharacteristicViewModel> viewModels,
-  ) {
-    return viewModels.map((viewModel) {
-      final descriptorViewModels = viewModel.descriptorViewModels;
-      return TreeNode(
-        children: [
-          TreeNode(
-            content: Expanded(
-              child: Container(
-                margin: const EdgeInsets.only(right: 40.0),
-                height: 360.0,
-                child: InheritedViewModel(
-                  view: const CharacteristicView(),
-                  viewModel: viewModel,
-                ),
-              ),
-            ),
-          ),
-          ..._buildDescriptorTreeNodes(descriptorViewModels),
-        ],
-        content: InheritedViewModel(
-          view: const CharacteristicTreeNodeView(),
-          viewModel: viewModel,
-        ),
-      );
-    }).toList();
-  }
-
-  List<TreeNode> _buildDescriptorTreeNodes(
-    List<DescriptorViewModel> viewModels,
-  ) {
-    return viewModels.map((viewModel) {
-      return TreeNode(
-        content: InheritedViewModel(
-          view: const DescriptorTreeNodeView(),
-          viewModel: viewModel,
-        ),
-      );
-    }).toList();
-  }
 }
